@@ -1,0 +1,1 @@
+qemu-system-i386 -fda ~/OsDev/build/main_floppy.img
