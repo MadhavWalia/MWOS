@@ -10,7 +10,7 @@ start:
 	mov si, msg_hello
 	call puts
 
-.halt
+.halt:
 	cli
 	hlt
 
@@ -43,4 +43,4 @@ puts:
 	ret
 
 
-msg_hello: db 'Hello_World', ENDL, 0
+msg_hello: db 'Hello from the kernel side, I think I have been booted right', ENDL, 0
