@@ -77,3 +77,138 @@ _x86_video_writeChar:
     mov sp, bp          ; restore the stack pointer
     pop bp              ; restore the old bp
     ret
+
+
+
+;
+; bool _cdelc x86_Disk_Reset
+; args: drive (8 bits)
+;
+global _x86_Disk_Reset
+_x86_Disk_Reset:
+
+    ; making a new stack frame (since we are in small memory mode, only the offset is needed)
+    push bp             ; save the old bp
+    mov bp, sp          ; initialize the frame
+
+    mov dl, [bp + 4]    ; set the drive number
+    mov ah, 00h           ; set the function number to reset disk
+    stc                 ; set the carry flag
+    int 13h             ; call the interrupt
+
+    mov ax, 1
+    sbb ax, 0           ; success for 1, failure for 0
+
+    ; restoring the old stack frame
+    mov sp, bp          ; restore the stack pointer
+    pop bp              ; restore the old bp
+    ret
+
+
+;
+; bool _cdelc x86_Disk_Read
+; args: drive (8 bits), cylinder (16 bits), head (16 bits), sector (16 bits), dataOut (16-bit far pointer)
+;
+global _x86_Disk_Read
+_x86_Disk_Read:
+
+    ; making a new stack frame (since we are in small memory mode, only the offset is needed)
+    push bp             ; save the old bp
+    mov bp, sp          ; initialize the frame
+
+    push bx             ; saving bx
+    push es             ; saving es
+
+    ; Input arguments setup:
+    mov dl, [bp + 4]    ; set the drive number
+
+    mov ch, [bp + 6]    ; set the cylinder number
+    mov cl, [bp + 7]
+    shl cl, 6
+
+    mov dh, [bp + 8]    ; set the head number
+
+    mov al, [bp + 8]    ; set the sector number
+    and al, 0x3F
+    mov cl, al
+
+    mov al, [bp + 12]   ; number of sectors to read
+
+    mov bx, [bp + 16]   ; set the dataOut pointer
+    mov es, bx
+    mov bx, [bp + 14]
+
+    ; Call the interrupt
+    mov ah, 02h           ; set the function number to read disk
+    stc
+    int 13h
+
+    ; Set the return value
+    mov ax, 1
+    sbb ax, 0           ; success for 1, failure for 0
+
+    pop es              ; restoring es
+    pop bx              ; restoring bx
+
+    ; restoring the old stack frame
+    mov sp, bp          ; restore the stack pointer
+    pop bp              ; restore the old bp
+    ret
+
+
+;
+; bool _cdelc x86_Disk_GetDriveParameters
+; args: drive (8 bits), driveTypeOut (8 bit pointer), 
+;       cylindersOut (16 bit pointer), sectorsOut (16 bit pointer), headsOut (16 bit pointer)
+;
+global _x86_Disk_GetDriveParameters
+_x86_Disk_Reset:
+
+    ; making a new stack frame (since we are in small memory mode, only the offset is needed)
+    push bp             ; save the old bp
+    mov bp, sp          ; initialize the frame
+
+    push es             ; saving es
+    push bx             ; saving bx
+    push si             ; saving si
+    push di             ; saving di
+
+    mov dl, [bp + 4]    ; set the drive number
+
+    mov ah, 08h         ; set the function number to get drive parameters
+    mov di, 0
+    mov es, di          ; set the es:di pointer to 0:0
+    stc                 ; set the carry flag
+    int 13h             ; call the interrupt
+
+    mov ax, 1
+    sbb ax, 0           ; success for 1, failure for 0
+
+    ; output arguments setup
+    mov si, [bp + 6]    ; driveTypeOut
+    mov [si], bl
+
+    mov bl, ch          ; cylindersOut - lower 8 bits
+    mov bh, cl          ; cylindersOut - upper 2 bits (6-7)
+    shr bh, 6
+    mov si, [bp + 8]   
+    mov [si], bx  
+
+    xor ch, ch
+    and cl, 0x3F        ; sectorsOut - lower 6 bits
+    mov si, [bp + 10]
+    mov [si], cx
+
+    mov cl, dh          ; headsOut
+    mov si, [bp + 12]
+    mov [si], cx
+
+    pop di              ; restoring di
+    pop si              ; restoring si
+    pop bx              ; restoring bx
+    pop es              ; restoring es
+
+    ; restoring the old stack frame
+    mov sp, bp          ; restore the stack pointer
+    pop bp              ; restore the old bp
+    ret
